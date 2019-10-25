@@ -1,0 +1,25 @@
+# #################################################### #
+# Git Attributes file for standardising local settings
+# #################################################### #
+core.autocrlf=true
+
+# Autodetect text files and normalise their line endings 
+# when checked in to your repository
+* text=crlf
+
+# Denote files that are binary and should not be modified.
+*.png binary
+*.PNG binary
+*.jpg binary
+*.JPG binary
+*.ico binary
+*.exe binary
+*.apk binary
+*.pdf binary
+*.ppt binary
+*.dll binary
+*.so binary
+*.zip binary
+*.docx binary
+# #################################################### #
+

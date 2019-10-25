@@ -1,0 +1,12 @@
+runtime: custom
+env: flex
+
+#network:
+#  forwarded_ports:
+#    - 80:4010
+
+endpoints_api_service:
+  # This is a template. Use the deploy_app.bck script to deploy this app.
+  name: SERVICE_NAME
+  #backend: petstore:4010
+  rollout_strategy: managed

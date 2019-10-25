@@ -1,0 +1,33 @@
+{
+  "port": "8080",
+  "forwardHost": null,
+  "basePath": null,
+  "log": false,
+  "logLocation": "https://api.stoplight.io/v1",
+  "debug": true,
+
+  "mock": {
+    "enabled": false,
+    "dynamic": false
+  },
+
+  "spec": null,
+  "startupMessage": "",
+  "sslCert": null,
+  "sslKey": null,
+  "beforeScript": null,
+  "afterScript": null,
+  "variables": {},
+
+  "stoplight": {
+    "userSecret": null,
+    "versionSecret": null
+  },
+
+  "blacklist": {
+    "headers": [],
+    "queryString": []
+  },
+
+  "updatedAt": null
+}

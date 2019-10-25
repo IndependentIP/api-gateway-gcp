@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.fuga</groupId>
+    <artifactId>api-gateway-gcp</artifactId>
+    <name>API contract testing</name>
+    <version>0.1.0</version>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.build.timestamp.format>yyyyMMdd't'HHmmss</maven.build.timestamp.format>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <build.appEngine.dir>${basedir}/target/appEngine</build.appEngine.dir>
+        <build.endpoints.dir>${basedir}/target/endpoints</build.endpoints.dir>
+
+        <ENDPOINTS_SERVICE_NAME>${GOOGLE_PROJECT_ID}.appspot.com</ENDPOINTS_SERVICE_NAME>
+
+        <karate.version>0.9.4</karate.version>
+        <maven.surefire.version>2.22.2</maven.surefire.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.intuit.karate</groupId>
+            <artifactId>karate-apache</artifactId>
+            <version>${karate.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.intuit.karate</groupId>
+            <artifactId>karate-junit4</artifactId>
+            <version>${karate.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+
+        <testResources>
+            <testResource>
+                <directory>src/test/java</directory>
+                <excludes>
+                    <exclude>**/*.java</exclude>
+                </excludes>
+            </testResource>
+        </testResources>
+
+        <plugins>
+
+            <!-- Plugin to retrieve git hash which will be used for version appengine -->
+            <!-- See https://phauer.com/2016/version-numbers-continuous-delivery-maven-docker/ -->
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>2.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dateFormat>yyyyMMdd-HHmmss</dateFormat><!--  human-readable part of the version number -->
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>false</generateGitPropertiesFile><!-- somehow necessary. otherwise the variables are not available in the pom -->
+                </configuration>
+            </plugin>
+
+            <!-- Copy resources required for deploying API and back-end services -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-resources-appengine</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${build.appEngine.dir}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/api</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                                <resource>
+                                    <directory>src/main/appEngine</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                                <resource>
+                                    <directory>src/main/docker</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-resources-endpoints</id>
+                        <!-- here the phase you need -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${build.endpoints.dir}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/api</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Deploy API to endpoints -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <executions>
+                    <execution>
+                        <id>deploy-API-endpoints</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>gcloud</executable>
+                            <!-- optional -->
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <arguments>
+                                <argument>endpoints</argument>
+                                <argument>services</argument>
+                                <argument>deploy</argument>
+                                <argument>${build.endpoints.dir}/petstore.yaml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Deploy backend implementation API -->
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>appengine-maven-plugin</artifactId>
+                <version>2.0.0</version>
+                <executions>
+                    <execution>
+                        <id>deploy-backend-service</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                        <configuration>
+                            <appEngineDirectory>${build.appEngine.dir}</appEngineDirectory>
+                            <!--<stagingDirectory>${build.appEngine.dir}/staging</stagingDirectory> -->
+                            <dockerDirectory>${build.appEngine.dir}</dockerDirectory>
+                            <!--<dockerfile>${build.appEngine.dir}/Dockerfile</dockerfile> -->
+                            <projectId>${GOOGLE_PROJECT_ID}</projectId>
+                            <stopPreviousVersion>true</stopPreviousVersion>
+                            <version>${git.commit.id}</version>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- MASE: Temp disabled
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.version}</version>
+                <configuration>
+                    <includes>
+                        <include>com/fuga/api/contract/*Runner.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+            -->
+
+        </plugins>
+    </build>
+
+</project>
