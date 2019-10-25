@@ -1,1 +1,3 @@
 Test page....
+
+![alt-text](/images/api.png "Optional title")
