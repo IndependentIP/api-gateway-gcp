@@ -27,6 +27,17 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.fuga</groupId>
+            <artifactId>karate-markdown-reporter</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.5</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.intuit.karate</groupId>
             <artifactId>karate-apache</artifactId>
             <version>${karate.version}</version>
@@ -38,6 +49,7 @@
             <version>${karate.version}</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -52,143 +64,164 @@
         </testResources>
 
         <plugins>
-
-            <!-- Plugin to retrieve git hash which will be used for version appengine -->
-            <!-- See https://phauer.com/2016/version-numbers-continuous-delivery-maven-docker/ -->
             <plugin>
-                <groupId>pl.project13.maven</groupId>
-                <artifactId>git-commit-id-plugin</artifactId>
-                <version>2.2.4</version>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dateFormat>yyyyMMdd-HHmmss</dateFormat><!--  human-readable part of the version number -->
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>false</generateGitPropertiesFile><!-- somehow necessary. otherwise the variables are not available in the pom -->
-                </configuration>
-            </plugin>
-
-            <!-- Copy resources required for deploying API and back-end services -->
-            <plugin>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-resources-appengine</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${build.appEngine.dir}</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>src/main/api</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                                <resource>
-                                    <directory>src/main/appEngine</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                                <resource>
-                                    <directory>src/main/docker</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>copy-resources-endpoints</id>
-                        <!-- here the phase you need -->
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${build.endpoints.dir}</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>src/main/api</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Deploy API to endpoints -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
-                <executions>
-                    <execution>
-                        <id>deploy-API-endpoints</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>gcloud</executable>
-                            <!-- optional -->
-                            <workingDirectory>${project.basedir}</workingDirectory>
-                            <arguments>
-                                <argument>endpoints</argument>
-                                <argument>services</argument>
-                                <argument>deploy</argument>
-                                <argument>${build.endpoints.dir}/petstore.yaml</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Deploy backend implementation API -->
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>appengine-maven-plugin</artifactId>
-                <version>2.0.0</version>
-                <executions>
-                    <execution>
-                        <id>deploy-backend-service</id>
-                        <phase>pre-integration-test</phase>
-                        <goals>
-                            <goal>deploy</goal>
-                        </goals>
-                        <configuration>
-                            <appEngineDirectory>${build.appEngine.dir}</appEngineDirectory>
-                            <!--<stagingDirectory>${build.appEngine.dir}/staging</stagingDirectory> -->
-                            <dockerDirectory>${build.appEngine.dir}</dockerDirectory>
-                            <!--<dockerfile>${build.appEngine.dir}/Dockerfile</dockerfile> -->
-                            <projectId>${GOOGLE_PROJECT_ID}</projectId>
-                            <stopPreviousVersion>true</stopPreviousVersion>
-                            <version>${git.commit.id}</version>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- MASE: Temp disabled
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven.surefire.version}</version>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.22.0</version>
                 <configuration>
                     <includes>
                         <include>com/fuga/api/contract/*Runner.java</include>
                     </includes>
+                    <systemPropertyVariables>
+                        <ENDPOINTS_SERVICE_NAME>${ENDPOINTS_SERVICE_NAME}</ENDPOINTS_SERVICE_NAME>
+                    </systemPropertyVariables>
                 </configuration>
+                <executions>
+                    <execution>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <!--<goal>integration-test</goal>-->
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
-            -->
-
         </plugins>
+
+
     </build>
 
+    <profiles>
+        <profile>
+            <id>deploy</id>
+
+            <build>
+                <plugins>
+
+                    <!-- Plugin to retrieve git hash which will be used for version appengine -->
+                    <!-- See https://phauer.com/2016/version-numbers-continuous-delivery-maven-docker/ -->
+                    <plugin>
+                        <groupId>pl.project13.maven</groupId>
+                        <artifactId>git-commit-id-plugin</artifactId>
+                        <version>2.2.4</version>
+                        <executions>
+                            <execution>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>revision</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <dateFormat>yyyyMMdd-HHmmss</dateFormat><!--  human-readable part of the version number -->
+                            <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                            <generateGitPropertiesFile>false
+                            </generateGitPropertiesFile><!-- somehow necessary. otherwise the variables are not available in the pom -->
+                        </configuration>
+                    </plugin>
+
+                    <!-- Copy resources required for deploying API and back-end services -->
+                    <plugin>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-resources-appengine</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${build.appEngine.dir}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>src/main/api</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                        <resource>
+                                            <directory>src/main/appEngine</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                        <resource>
+                                            <directory>src/main/docker</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-resources-endpoints</id>
+                                <!-- here the phase you need -->
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${build.endpoints.dir}</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>src/main/api</directory>
+                                            <filtering>true</filtering>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Deploy API to endpoints -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>deploy-API-endpoints</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>gcloud</executable>
+                                    <!-- optional -->
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                    <arguments>
+                                        <argument>endpoints</argument>
+                                        <argument>services</argument>
+                                        <argument>deploy</argument>
+                                        <argument>${build.endpoints.dir}/petstore.yaml</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Deploy backend implementation API -->
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>appengine-maven-plugin</artifactId>
+                        <version>2.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>deploy-backend-service</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>deploy</goal>
+                                </goals>
+                                <configuration>
+                                    <appEngineDirectory>${build.appEngine.dir}</appEngineDirectory>
+                                    <!--<stagingDirectory>${build.appEngine.dir}/staging</stagingDirectory> -->
+                                    <dockerDirectory>${build.appEngine.dir}</dockerDirectory>
+                                    <!--<dockerfile>${build.appEngine.dir}/Dockerfile</dockerfile> -->
+                                    <projectId>${GOOGLE_PROJECT_ID}</projectId>
+                                    <stopPreviousVersion>true</stopPreviousVersion>
+                                    <version>${git.commit.id}</version>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+
+        </profile>
+    </profiles>
 </project>

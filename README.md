@@ -81,8 +81,14 @@ To display custom documentation in your portal, you must store the files in a Gi
 
 Subfolders within your service folder let you group related pages under a section, and may contain further subfolders. The title of the folders and filenames are used in navigation. For example, a file named Getting Started.md appears in the left navigation bar as Getting Started. Within the folder named after your Endpoints service name, you must have a file called navigation.yaml. This file indicates how you want your content to appear in the left navigation bar in your portal.
     
+To generate markdown representation of the :
+
+https://github.com/trivago/cluecumber-report-plugin
+
+    
 ## Resources
 
 * [Custom configuration Prism](https://help.stoplight.io/prism/getting-started/custom-configuration)
 * [Deploying to Google App Engine using Docker](https://graysonkoonce.com/deploying-to-google-app-engine-using-docker/)
 * [Adding custom documentation Cloud Endpoints](https://cloud.google.com/endpoints/docs/openapi/dev-portal-add-custom-docs)
+* [How to expose your API using Google cloud Endpoints](https://binx.io/blog/2018/12/01/how-to-expose-your-api-using-google-cloud-endpoints/)
